@@ -1,0 +1,1 @@
+Element's sum: 24

@@ -1,0 +1,3 @@
+* What is new in tensor-0.1:
+
+** A tensor library extending GSL vector and matrix to multidimensional arrays.

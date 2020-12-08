@@ -1,0 +1,1652 @@
+\input texinfo @c -*-texinfo-*-
+
+@setfilename tensor.info
+
+
+@c %**start of header
+
+@include version.texi
+
+@afourpaper
+
+@settitle Tensor @value{VERSION}
+
+@c %**end of header
+
+
+@dircategory Software libraries
+
+@direntry
+
+* Tensor: (tensor). A multidimensional array library.
+
+@end direntry
+
+
+@copying
+
+This file documents the Tensor library for multidimensional array
+representation and processing. It is an extension of GSL---the GNU
+Scientific Library. @xref{Top,,, gsl-ref, The GSL Manual} for more
+information about GSL.
+
+Copyright @copyright{} 2020 Viktor Slavkovikj
+
+@quotation
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+Texts. A copy of the license is included in the section entitled ``GNU
+Free Documentation License''.
+
+@end quotation
+
+@end copying
+
+
+@titlepage
+
+@title Tensor
+
+@subtitle Edition @value{EDITION}, for Tensor Version @value{VERSION}
+
+@subtitle @value{UPDATED}
+
+@author Viktor Slavkovikj
+
+@page
+
+@vskip 0pt plus 1filll
+
+@insertcopying
+
+@end titlepage
+
+
+@contents
+
+
+@ifnottex
+
+@node Top
+@top Tensor @value{VERSION}
+
+@insertcopying
+
+@end ifnottex
+
+
+@menu
+* Tensor::                      The Tensor library.
+* Concept index::               Topics covered by this manual.
+@end menu
+
+@node Tensor
+@chapter Tensor
+@cindex Tensor
+
+A tensor can be defined as a multidimensional array representation. It
+generalises to higher dimensions the concepts of vectors and matrices,
+which can be described as tensors with dimensions of one and two
+respectively. A three-dimensional tensor can therefore correspond to a
+set of matrices, however, in general, a tensor can be defined to have
+arbitrary number of dimensions within the constraints of physical
+memory.
+
+The Tensor library contains types and functions for creating and
+manipulating tensors. It is an extension of GSL---the GNU Scientific
+Library, which is a collection of numerical routines for scientific
+computing.
+
+@menu
+* Using the library::           Compiling and linking.
+* Tensor types::                Types of tensors.
+* Tensor allocation::           How to create tensors.
+* Tensor elements access::      How to access individual elements.
+* Tensor initialisation::       Filling a tensor with predefined values.
+* Reading and writing tensors:: Tensor persistence.
+* Tensor views::                A different view on existing data.
+* Tensor operations::           Operations on tensors.
+* Tensor properties::           Basic tensor characteristics.
+* Examples::                    Examples of usage.
+@end menu
+
+@node Using the library
+@section Using the library
+@cindex Using the library
+@cindex compiling
+@cindex linking
+
+This section describes how to compile and link programs to use the
+Tensor library. A prerequisite to using Tensor @value{VERSION} in your
+own programs is having an installation of GSL (@pxref{Obtaining GSL,,,
+gsl-ref, The GSL Manual}) available on your system.
+
+@menu
+* An example program::          A short example.
+* Compiling and linking::       How to compile and link programs.
+* Shared libraries::            Using shared libraries.
+@end menu
+
+@node An example program
+@subsection An example program
+
+The following short program sums the elements of a tensor and displays
+the result.
+
+@verbatiminclude examples/tensor_sum.c
+
+Since all of the tensor's elements are initialised to one, the sum of
+elements equals their total number, as shown in the output below:
+
+@verbatiminclude examples/tensor_sum.txt
+
+@node Compiling and linking
+@subsection Compiling and linking
+
+The library header files are installed in their own @code{tensor}
+directory. Therefore, to compile programs as the one listed in the
+previous subsection (@pxref{An example program,,, tensor, The Tensor
+Manual}) any preprocessor include statements have to be provided with
+the @code{/tensor} directory prefix, such as:
+
+@verbatim
+#include <tensor/tensor.h>
+@end verbatim
+
+If the directory is not installed on the standard search path of your
+compiler you will also need to provide its location to the preprocessor
+as a command line flag. The default location of the @code{tensor}
+directory is @code{/usr/local/include/tensor}. A typical compilation
+command for a source file @code{example.c} with the GNU C compiler
+@code{gcc} is:
+
+@verbatim
+$ gcc -Wall -I/usr/local/include -c example.c
+@end verbatim
+
+This results in an object file @code{example.o}. The default include
+path for @code{gcc} searches @code{/usr/local/include} automatically so
+the @code{-I} option can actually be omitted when Tensor is installed in
+its default location.
+
+The library is installed as a single file, @code{libtensor.a}. A shared
+version of the library @code{libtensor.so} is also installed on systems
+that support shared libraries. The default location of these files is
+@code{/usr/local/lib}. If this directory is not on the standard search
+path of your linker you will also need to provide its location as a
+command line flag.
+
+To link against the library you need to specify the Tensor library, GSL,
+and a supporting CBLAS library, which provides standard basic linear
+algebra subroutines. A suitable CBLAS implementation is provided with
+GSL--in the library @code{libgslcblas.a}, in case your system does not
+provide one. The following example shows how to link an application with
+the library:
+
+@verbatim
+$ gcc -L/usr/local/lib example.o -lgsl -lgslcblas -lm -ltensor
+@end verbatim
+
+The default library path for gcc searches @code{/usr/local/lib}
+automatically so the @code{-L} option can be omitted when Tensor and GSL
+are installed in their default location. The option @code{-lm} links
+with the system math library (not needed on MacOS X).
+
+@node Shared libraries
+@subsection Shared libraries
+
+To run a program linked with the shared version of the library the
+operating system must be able to locate the corresponding @code{.so}
+file at runtime. If the library cannot be found, the following error
+will occur:
+
+@verbatim
+$ ./a.out
+./a.out: error while loading shared libraries:
+libtensor.so.0: cannot open shared object file: No such file or directory
+@end verbatim
+
+To avoid this error, either modify the system dynamic linker
+configuration (@code{/etc/ld.so.conf} on GNU/Linux systems) or define
+the shell variable @code{LD_LIBRARY_PATH} to include the directory where
+the library is installed.
+
+For example, in the Bourne shell (@code{/bin/sh} or @code{/bin/bash}),
+the library search path can be set with the following commands:
+
+@verbatim
+$ LD_LIBRARY_PATH=/usr/local/lib
+$ export LD_LIBRARY_PATH
+$ ./example
+@end verbatim
+
+To save retyping these commands each session they can be placed in an
+individual or system-wide login file.
+
+To compile a statically linked version of the program, use the
+@code{-static} flag in @code{gcc}:
+
+@verbatim
+$ gcc -static example.o -lgsl -lgslcblas -lm -ltensor
+@end verbatim
+
+@node Tensor types
+@section Tensor types
+@cindex Tensor types
+
+The @code{tensor} structure contains six components: @code{dim},
+@code{size}, @code{stride}, @code{data}, @code{block}, and
+@code{owner}, as listed below.
+
+@deftp {Type} tensor
+@verbatim
+typedef struct
+{
+  size_t dim;
+  size_t * size;
+  size_t * stride;
+  double * data;
+  gsl_block * block;
+  int owner;
+} tensor;
+@end verbatim
+@end deftp
+
+The number of tensor dimensions is @code{dim}. The @code{size} and
+@code{stride} are pointers to arrays that contain the size and stride
+for each individual dimension. For a given dimension, its size gives the
+number of constituting parts for the dimension. For example, in a
+two-dimensional tensor, i.e., a matrix, @code{dim} is 2 and
+@code{size[0]} gives the number of rows while @code{size[1]} the number
+of columns. The stride for a dimension is the step-size between the
+dimension's constituting parts in physical memory, measured in units of
+the underlying data type. It can differ from the corresponding dimension
+size to allow the use of sub-tensors. The @code{data} field is a pointer
+to the memory where the elements of the tensor are stored.
+
+Tensors use blocks (@pxref{Blocks,,, gsl-ref, The GSL Manual}) as single
+underlying type memory storage---the @code{block} component in the
+@code{tensor} structure. If the tensor owns the block then the
+@code{owner} component is set to one and the block will be deallocated
+when the tensor is freed. If the block is owned by another object then
+the @code{owner} field is zero and any underlying block will not be
+freed.
+
+Tensors support each of the standard data types. The functions that
+operate on @code{double} data type have the prefix @code{tensor},
+whereas for other data types the type is also included in the prefix,
+e.g., @code{tensor_int} for @code{int} data type. Not all functions are
+applicable to every data type. A full list of available tensor types is
+given below.
+
+@multitable @columnfractions .5 .5
+@headitem Tensor
+@tab Type
+
+@item tensor
+@tab double
+
+@item tensor_float
+@tab float
+
+@item tensor_long_double
+@tab long double
+
+@item tensor_int
+@tab int
+
+@item tensor_uint
+@tab unsigned int
+
+@item tensor_long
+@tab long
+
+@item tensor_ulong
+@tab unsigned long
+
+@item tensor_short
+@tab short
+
+@item tensor_ushort
+@tab unsigned short
+
+@item tensor_char
+@tab char
+
+@item tensor_uchar
+@tab unsigned char
+
+@item tensor_complex
+@tab complex double
+
+@item tensor_complex_float
+@tab complex float
+
+@item tensor_complex_long_double
+@tab complex long double
+
+@end multitable
+
+The functions for tensor creation and processing are defined in
+@code{tensor.h}.
+
+
+@node Tensor allocation
+@section Tensor allocation
+@cindex Tensor allocation
+@cindex allocate
+@cindex free
+
+The functions for allocating tensor memory follow the style of malloc
+and free. They also perform their own error checking. If there is
+insufficient memory available to allocate a matrix then the functions
+call the GSL error handler (with an error number of @code{GSL_ENOMEM})
+in addition to returning a null pointer. Thus if you use the GSL error
+handler to abort your program then it isn’t necessary to check every
+alloc.
+
+@anchor{function_tensor_alloc}
+@deftypefn Function {tensor *} {tensor_alloc} @
+{(const size_t dim, ...)}
+
+This function creates a tensor of dimension @code{dim}, returning a
+pointer to a newly initialised tensor struct. The variable argument list
+@code{...} should contain the size arguments for each tensor
+dimension. A new block is allocated for the elements of the tensor, and
+stored in the block component of the tensor struct. The block is
+``owned'' by the tensor, and will be deallocated when the tensor is
+freed. Requesting zero for @code{dim} is valid and returns a non-null
+result.
+
+@end deftypefn
+
+@deftypefn Function {tensor *} {tensor_calloc} @
+{(const size_t dim, ...)}
+
+This function allocates memory for a tensor of dimension @code{dim},
+with sizes for each dimension provided in the variable argument list,
+and initialises all the elements of the tensor to zero.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_free} @
+{(tensor * t)}
+
+This function frees a previously allocated tensor @code{t}. If the
+tensor was created using @code{tensor_alloc()} then the block underlying
+the tensor will also be deallocated. If the tensor has been created from
+another object then the memory is still owned by that object and will
+not be deallocated.
+
+@end deftypefn
+
+
+@node Tensor elements access
+@section Tensor elements access
+@cindex Tensor elements access
+@cindex access
+@cindex get
+@cindex set
+
+The functions for accessing the elements of a tensor use the GSL range
+checking system. You can turn off range checking by recompiling your
+program with the preprocessor definition @code{GSL_RANGE_CHECK_OFF}.
+
+Tensor elements are stored in ``C-order'', i.e., the last index moves
+continuously through memory. For a tensor @code{t} of @code{dim} 3, the
+element accessed at indices @code{i, j, k} is:
+
+@verbatim
+t->data[i * stride[0] + j * stride[1] + k * stride[2]].
+@end verbatim
+
+@anchor{function_tensor_get}
+@deftypefn Function {double} {tensor_get} @
+{(const tensor * t, ...)}
+
+This function returns the element specified by the indices in the
+variable argument list. If any of the indices are out of the allowed
+range for their dimension @code{d} of @code{0} to @code{size[d] - 1},
+then the error handler is invoked and @code{0} is returned.
+
+@end deftypefn
+
+@anchor{function_tensor_set}
+@deftypefn Function {void} {tensor_set} @
+{(const tensor * t, const double x, ...)}
+
+This function sets the value of the element of tensor @code{t} at the
+indices given in the variable argument list to @code{x}. If any of the
+indices are out of the allowed range for their dimension @code{d} of
+@code{0} to @code{size[d] - 1}, then the error handler is invoked.
+
+@end deftypefn
+
+@deftypefn Function {double *} {tensor_ptr} @
+{(tensor * t, ...)}
+
+@end deftypefn
+
+@deftypefn Function {const double *} {tensor_const_ptr} @
+{(const tensor * t, ...)}
+
+These functions return a pointer to the element of tensor @code{t} at
+the indices given in the variable argument list. If any of the indices
+are out of the allowed range for their dimension @code{d} of @code{0} to
+@code{size[d] - 1}, then the error handler is invoked and a null pointer
+is returned.
+
+@end deftypefn
+
+@deftypefn Function {size_t} {tensor_index} @
+{(const tensor * t, const size_t i)}
+
+This function returns the index @code{idx} of the @code{i}-th
+consecutive element (as in a flat ``C-order'' layout) of tensor @code{t}
+taking into account strides, such that @code{t->data[idx]} gives the
+value of the @code{i}-th element of @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {double *} {tensor_ptr_idx} @
+{(tensor * t, const size_t idx)}
+
+@end deftypefn
+
+@deftypefn Function {const double *} {tensor_const_ptr_idx} @
+{(const tensor * t, const size_t idx)}
+
+These are convenience functions that return a pointer to the tensor's
+element at index @code{idx} (as obtained from @code{tensor_index (const
+tensor * t, const size_t i)} function). An inline version of these
+functions is used when @code{HAVE_INLINE} is defined.
+
+@end deftypefn
+
+@node Tensor initialisation
+@section Tensor initialisation
+@cindex Tensor initialisation
+@cindex initialise
+
+The functions listed below initialise the elements of a tensor to
+predefined values.
+
+@deftypefn Function {void} {tensor_set_zero} @
+{(tensor * t)}
+
+This function sets all tensor @code{t} elements to zero.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_set_one} @
+{(tensor * t)}
+
+This function sets all tensor @code{t} elements to one.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_set_all} @
+{(tensor * t, const double x)}
+
+This function sets all tensor @code{t} elements to value @code{x}.
+
+@end deftypefn
+
+It is possible to initialise a tensor with values drawn from random
+number distributions. All of the following functions have an input
+argument @code{rng}, which is a pointer to a GSL random number generator
+@code{const gsl_rng *} used for drawing the samples.
+
+@deftypefn Function {void} {tensor_set_uniform} @
+{(tensor * t, const gsl_rng * rng)}
+
+This function sets all tensor @code{t} elements to random numbers drawn
+from a uniform distribution in the interval @code{[0, 1)}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_set_uniform_int} @
+{(tensor * t, const gsl_rng * rng, unsigned long int max)}
+
+This function sets all tensor @code{t} elements to random numbers drawn
+from a uniform distribution in the interval @code{[0, max - 1]}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_set_normal} @
+{(tensor * t, const gsl_rng * rng, double mu, double sigma)}
+
+This function sets all tensor @code{t} elements to random numbers drawn
+from a Gaussian distribution with mean @code{mu} and standard deviation
+@code{sigma}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_set_std_normal} @
+{(tensor * t, const gsl_rng * rng)}
+
+This function sets all tensor @code{t} elements to random numbers drawn
+from a Gaussian distribution with mean @code{0.0} and standard deviation
+@code{1.0}.
+
+@end deftypefn
+
+@node Reading and writing tensors
+@section Reading and writing tensors
+@cindex read
+@cindex write
+
+@deftypefn Function {int} {tensor_fread} @
+{(FILE * stream, tensor * t)}
+
+This function reads into the tensor @code{t} from the open stream
+@code{stream} in binary format. The tensor @code{t} must be preallocated
+with the correct total size since the function uses the size of
+@code{t} to determine how many bytes to read. The return value is
+@code{GSL_SUCCESS} for success and @code{GSL_EFAILED} if there was a
+problem reading from the file. The data is assumed to have been written
+in the native binary format on the same architecture.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_fwrite} @
+{(FILE * stream, const tensor * t)}
+
+This function writes the elements of the tensor @code{t} to the stream
+@code{stream} in binary format. The return value is @code{GSL_SUCCESS}
+for success and @code{GSL_EFAILED} if there was a problem writing to the
+file. Since the data is written in the native binary format it may not
+be portable between different architectures.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_fscanf} @
+{(FILE * stream, tensor * t)}
+
+This function reads formatted data from the stream @code{stream} into
+the tensor @code{t}. The tensor @code{t} must be preallocated with the
+correct total size since the function uses the size of @code{t} to
+determine how many numbers to read.  The function returns
+@code{GSL_SUCCESS} for success and @code{GSL_EFAILED} if there was a
+problem reading from the file.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_fprintf} @
+{(FILE * stream, const tensor * t, const char * format)}
+
+This function writes the elements of the tensor @code{t} line-by-line to
+the stream @code{stream} using the format specifier @code{format}, which
+should be one of the @code{%g}, @code{%e} or @code{%f} formats for
+floating-point numbers and @code{%d} for integers. The function returns
+@code{GSL_SUCCESS} for success and @code{GSL_EFAILED} if there was a
+problem writing to the file.
+
+@end deftypefn
+
+@node Tensor views
+@section Tensor views
+@cindex views
+
+Tensor views provide access to whole or part of the data owned by
+another tensor. Unlike GSL vector and matrix views, tensor views are
+allocated from heap memory as a consequence of the arbitrary dimension
+of tensors. Therefore, it is the user's responsibility to free the
+bookkeeping memory used by tensor views when the view is no longer
+needed. There is no separate type for views. Except of not owning the
+data, as indicated by the @code{owner} field set to @code{0}, tensor
+views do not differ from ordinary tensors.
+
+@deftypefn Function {tensor *} {tensor_view} @
+{(tensor * t, ...)}
+
+@end deftypefn
+
+@deftypefn Function {const tensor *} {tensor_const_view} @
+{(const tensor * t, ...)}
+
+These functions return a tensor view of a sub-tensor of tensor
+@code{t}. The variable argument list should contain triplets of
+@code{offset, size, step} for each tensor dimension, where @code{offset}
+indicates the number of parts starting from the initial part of the
+dimension, @code{size} is the number of parts in the resulting tensor
+view, and @code{step} is the step-size for the dimension from the
+original tensor.
+
+A convenience macro @code{RANGE (start, end, step)} defined in
+@code{range.h} can be used to form a triplet for a dimension in the
+previous functions. It accepts a @code{start} and @code{end} index for
+the parts of the original tensor dimension and a step-size.
+
+@end deftypefn
+
+
+@deftypefn Function {tensor *} {tensor_view_array} @
+{(double * array, const size_t dim, ...)}
+@end deftypefn
+
+@deftypefn Function {const tensor *} {tensor_const_view_array} @
+{(const double * array, const size_t dim, ...)}
+
+These functions return a tensor view of the array @code{array}. The
+variable argument list should contain the sizes for each dimension. The
+original array should not be deallocated while the view is still in use.
+
+@end deftypefn
+
+The following functions provide conversions between GSL vector and
+matrix to tensor and vice-versa for tensors of dimensions one and two.
+
+@deftypefn Function {tensor *} {tensor_view_vector} @
+{(gsl_vector * vector)}
+
+@end deftypefn
+
+@deftypefn Function {const tensor *} {tensor_const_view_vector} @
+{(const gsl_vector * vector)}
+
+These functions return a tensor view from a GSL vector @code{vector}.
+
+@end deftypefn
+
+@deftypefn Function {gsl_vector_view} {gsl_vector_view_tensor} @
+{(tensor * t)}
+
+@end deftypefn
+
+@deftypefn Function {gsl_vector_const_view} {gsl_vector_const_view_tensor} @
+{(const tensor * t)}
+
+These functions return a GSL vector view from a tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {tensor *} {tensor_view_matrix} @
+{(gsl_matrix * matrix)}
+
+@end deftypefn
+
+@deftypefn Function {const tensor *} {tensor_const_view_matrix} @
+{(const gsl_matrix * matrix)}
+
+These functions return a tensor view from a GSL matrix @code{matrix}.
+
+@end deftypefn
+
+@deftypefn Function {gsl_matrix_view} {gsl_matrix_view_tensor} @
+{(tensor * t)}
+
+@end deftypefn
+
+@deftypefn Function {gsl_matrix_const_view} {gsl_matrix_const_view_tensor} @
+{(const tensor * t)}
+
+These functions return a GSL matrix view from a tensor @code{t}.
+
+@end deftypefn
+
+
+@node Tensor operations
+@section Tensor operations
+@cindex operations
+@cindex operators
+
+The operations supported by tensors are divided in the groups listed
+below.
+
+@menu
+* Basic operators::             Copy, assign, swap, adjoin.
+* Shape operators::             Operators that change dimension and or size.
+* Arithmetic operators::        Arithmetic functions.
+* Trigonometric operators::     Trigonometric functions.
+* Exponential operators::       Exponential functions.
+* Logarithmic operators::       Logarithmic functions.
+* Statistics operators::        Statistical functions.
+* Rounding operators::          Rounding and truncation functions.
+* Logical operators::           Logical functions.
+* Sorting operators::           Sorting functions.
+@end menu
+
+@node Basic operators
+@subsection Basic operators
+@cindex copy
+@cindex assign
+@cindex swap
+@cindex adjoin
+
+@deftypefn Function {tensor *} {tensor_copy} @
+{(const tensor * t_in)}
+
+This function returns a deep copy of tensor @code{t_in}. After the
+operation both tensor elements are independent, i.e., changes to one of
+the tensors do not reflect in the other. The copied tensor is contiguous
+even if @code{t_in} is discontiguous.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_assign} @
+{(tensor * t1, const tensor * t2)}
+
+This function assigns all elements from tensor @code{t2} to tensor
+@code{t1}. After the operation, tensor @code{t1}'s elements have equal
+values to those of tensor @code{t2}. The function returns
+@code{GSL_SUCCESS} if the operation was successful, or an error
+@code{GSL_EBADLEN} if the total number of elements differs between the
+two tensors.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_swap} @
+{(tensor * t1, tensor * t2)}
+
+This function swaps all elements between tensors @code{t1} and
+@code{t2}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_adjoin} @
+{(tensor * t)}
+
+This function adjoins a tensor @code{t}, i.e., it makes its underlying
+memory contiguous. The function has no effect if @code{t} had already
+been a contiguous tensor.
+
+@end deftypefn
+
+
+@node Shape operators
+@subsection Shape operators
+@cindex shape
+
+The following functions manipulate the shape (dimensions and/or sizes)
+of tensors.
+
+@deftypefn Function {int} {tensor_morph} @
+{(tensor * t, ...)}
+
+This function changes the sizes of tensor @code{t} to new sizes provided
+in the variable argument list. The function returns @code{GSL_SUCCESS}
+if the operation was successful, or @code{GSL_EINVAL} if the total
+number of elements with the new sizes does not equal the one before the
+operation. The tensor is adjoined if it was not contiguous.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_deflate} @
+{(tensor * t)}
+
+This function removes dimensions of size @code{1} from tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_inflate} @
+{(tensor * t, const size_t didx)}
+
+This function adds a dimension of size @code{1} to tensor @code{t} at
+dimension @code{didx}. The function returns @code{GSL_SUCCESS} if the
+operation was successful, or @code{GSL_EINVAL} if @code{didx} is outside
+the range @code{[0, dim]}, where @code{dim} is the dimension of
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {tensor *} {tensor_concat} @
+{(const size_t didx, const size_t n, ...)}
+
+This function returns a tensor which is a concatenation along the
+dimension @code{didx} of the @code{n} tensors provided in the variable
+argument list. The sizes of the input tensors have to match, except at
+the concatenating dimension.
+
+@end deftypefn
+
+
+@node Arithmetic operators
+@subsection Arithmetic operators
+
+@deftypefn Function {void} {tensor_abs} @
+{(tensor * t)}
+
+This function works inplace on tensor @code{t} to provide the absolute
+value of each tensor element. In case @code{t} is complex, then the
+magnitude of each element is stored in the real part and the imaginary
+part is set to @code{0}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_neg} @
+{(tensor * t)}
+
+This function works inplace on tensor @code{t} to provide the negative
+value of each tensor element. If the tensor contains complex data types,
+it provides the complex negative.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_inv} @
+{(tensor * t)}
+
+This function works inplace on tensor @code{t}. It calculates the
+reciprocal value of each element if the tensor is of a real data type,
+or the complex inverse for complex data types.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_add} @
+{(tensor * t1, const tensor * t2)}
+
+This function adds the elements of tensor @code{t2} to the elements of
+tensor @code{t1}. The result @code{t1 = t1 + t2} is stored in @code{t1}
+and @code{t2} remains unchanged. The two tensors must have matching
+sizes.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_sub} @
+{(tensor * t1, const tensor * t2)}
+
+This function subtracts the elements of tensor @code{t2} from the
+elements of tensor @code{t1}. The result @code{t1 = t1 - t2} is stored
+in @code{t1} and @code{t2} remains unchanged. The two tensors must have
+matching sizes.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_mul} @
+{(tensor * t1, const tensor * t2)}
+
+This function multiplies the elements of tensor @code{t2} to the
+elements of tensor @code{t1}. The result @code{t1 = t1 * t2} is stored
+in @code{t1} and @code{t2} remains unchanged. The two tensors must have
+matching sizes.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_div} @
+{(tensor * t1, const tensor * t2)}
+
+This function divides the elements of tensor @code{t2} from the elements
+of tensor @code{t1}. The result @code{t1 = t1 / t2} is stored in
+@code{t1} and @code{t2} remains unchanged. The two tensors must have
+matching sizes.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_int_mod} @
+{(tensor * t1, const tensor * t2)}
+
+This function is defined only for integer data. It calculates the
+modulus operator or the remainder after division of the elements of
+tensor @code{t2} from the elements of tensor @code{t1}. The result
+@code{t1 = t1 % t2} is stored in @code{t1} and @code{t2} remains
+unchanged. The two tensors must have matching sizes.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_scale_add} @
+{(tensor * t, const double s, const double a)}
+
+This function works inplace to scale the elements of tensor @code{t} by
+a constant factor @code{s} and to that add a constant @code{a}. The
+result @code{t = t * s + a} is stored in @code{t}.
+
+@end deftypefn
+
+The following operators are defined only for complex tensors.
+
+@deftypefn Function {void} {tensor_conj} @
+{(tensor * t)}
+
+This function works inplace to provide the conjugate of a complex data
+tensor.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arg} @
+{(tensor * t)}
+
+This function works inplace and calculates the argument of a complex
+tensor. The argument of a complex number is the angle in the complex
+plane between the positive real axis and a line passing through zero and
+the number.  This angle is measured in the usual fashion and ranges from
+@code{-pi} to @code{pi}. It is stored in the real part of the element
+while the imaginary part is set to @code{0}.
+
+@end deftypefn
+
+@node Trigonometric operators
+@subsection Trigonometric operators
+@cindex Trigonometric operators
+
+The functions below are defined for floating-point data type
+tensors. From the complex tensors, only the @code{double} data type is
+supported.
+
+@deftypefn Function {void} {tensor_sin} @
+{(tensor * t)}
+
+This functions calculates inplace the sine of the elements in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_cos} @
+{(tensor * t)}
+
+This functions calculates inplace the cosine of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_tan} @
+{(tensor * t)}
+
+This functions calculates inplace the tangent of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_sec} @
+{(tensor * t)}
+
+This functions calculates inplace the secant of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_csc} @
+{(tensor * t)}
+
+This functions calculates inplace the cosecant of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_cot} @
+{(tensor * t)}
+
+This functions calculates inplace the cotangent of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arcsin} @
+{(tensor * t)}
+
+This functions calculates inplace the arcsine of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arccos} @
+{(tensor * t)}
+
+This functions calculates inplace the arccosine of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arctan} @
+{(tensor * t)}
+
+This functions calculates inplace the arctangent of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {tensor *} {tensor_arctan2} @
+{(const tensor * y, const tensor * x)}
+
+This function returns a tensor containing the computation of the
+arctangent of @code{y / x}, but the signs of both tensor arguments are
+used to determine the quadrant of the result, and @code{x} is permitted
+to be zero. The return value is given in radians and is in the range
+@code{-pi} to @code{pi}, inclusive.
+
+This function is defined only for real data type tensors.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arcsec} @
+{(tensor * t)}
+
+This functions calculates inplace the arcsecant of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arccsc} @
+{(tensor * t)}
+
+This functions calculates inplace the arccosecant of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arccot} @
+{(tensor * t)}
+
+This functions calculates inplace the arccotangent of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_sinh} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic sine of the elements in
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_cosh} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic cosine of the elements
+in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_tanh} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic tangent of the elements
+in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_sech} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic secant of the elements
+in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_csch} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic cosecant of the
+elements in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_coth} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic cotangent of the
+elements in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arcsinh} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic arcsine of the elements
+in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arccosh} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic arccosine of the
+elements in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arctanh} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic arctangent of the
+elements in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arcsech} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic arcsecant of the
+elements in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arccsch} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic arccosecant of the
+elements in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_arccoth} @
+{(tensor * t)}
+
+This functions calculates inplace the hyperbolic arccotangent of the
+elements in @code{t}.
+
+@end deftypefn
+
+
+@node Exponential operators
+@subsection Exponential operators
+@cindex Exponential operators
+
+@deftypefn Function {void} {tensor_pow} @
+{(tensor * t, double p)}
+
+This function calculates the value of elements in @code{t} raised to the
+power @code{p}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_pow_real} @
+{(tensor * t, double p)}
+
+This function calculates the value of elements in a complex data type
+tensor @code{t} raised to the real power @code{p}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_sqrt} @
+{(tensor * t)}
+
+This function calculates the square root of the elements in tensor
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_cbrt} @
+{(tensor * t)}
+
+This function calculates the cube root of the elements in tensor
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_exp} @
+{(tensor * t)}
+
+This function calculates @code{e} (the base of natural logarithms)
+raised to the power @code{t} for each element of @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_exp2} @
+{(tensor * t)}
+
+This function calculates @code{2} raised to the power @code{t} for each
+element of @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_exp10} @
+{(tensor * t)}
+
+This function calculates @code{10} raised to the power @code{t} for each
+element of @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_expm1} @
+{(tensor * t)}
+
+This function calculates @code{exp(t) - 1}, for each element of
+@code{t}, in a way that is accurate for small values of @code{t}.
+
+This function is only defined for real data types.
+
+@end deftypefn
+
+
+@node Logarithmic operators
+@subsection Logarithmic operators
+@cindex Logarithmic operators
+
+@deftypefn Function {void} {tensor_log} @
+{(tensor * t)}
+
+This function calculates the natural logarithm (base @code{e}) of the
+elements in tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_log2} @
+{(tensor * t)}
+
+This function calculates the base @code{2} logarithm of the elements in
+tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_log10} @
+{(tensor * t)}
+
+This function calculates the base @code{10} logarithm of the elements in
+tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_log1p} @
+{(tensor * t)}
+
+This function calculates the value @code{log(1 + t)}, for each element
+in tensor @code{t}, in a way that is accurate for small values in
+@code{t}.
+
+This function is only defined for real data types.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_logb} @
+{(tensor * t)}
+
+This function extracts the exponent of each element of @code{t} as a
+floating-point value.
+
+@end deftypefn
+
+@node Statistics operators
+@subsection Statistics operators
+@cindex Statistics operators
+
+@deftypefn Function {double} {tensor_max} @
+{(const tensor * t)}
+
+This function returns the maximal element in tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {double} {tensor_min} @
+{(const tensor * t)}
+
+This function returns the minimal element in tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_minmax} @
+{(const tensor * t, double * min, double * max)}
+
+This function returns the minimal element in tensor @code{t} in
+@code{min} and the maximal element in tensor @code{t} in @code{max}.
+
+@end deftypefn
+
+@deftypefn Function {size_t} {tensor_min_index} @
+{(const tensor * t)}
+
+This function returns the index of the minimal element in tensor
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {size_t} {tensor_max_index} @
+{(const tensor * t)}
+
+This function returns the index of the maximal element in tensor
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_minmax_index} @
+{const tensor * t, size_t * min_index, size_t * max_index)}
+
+This function returns the index of the minimal element in tensor
+@code{t} in @code{min_index} and the index of the maximal element in
+tensor @code{t} in @code{max_index}.
+
+@end deftypefn
+
+@deftypefn Function {double} {tensor_sum} @
+{(const tensor * t)}
+
+This function returns the sum of all the elements in tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {double} {tensor_prod} @
+{(const tensor * t)}
+
+This function returns the product of all the elements in tensor
+@code{t}.
+
+@end deftypefn
+
+@deftypefn Function {double} {tensor_mean} @
+{(const tensor * t)}
+
+This function returns the average or the arithmetic mean of the elements
+in tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {double} {tensor_var} @
+{(const tensor * t)}
+
+This function returns the variance of the elements in tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {double} {tensor_std} @
+{(const tensor * t)}
+
+This function returns the standard deviation of the elements in tensor
+@code{t}.
+
+@end deftypefn
+
+@node Rounding operators
+@subsection Rounding operators
+@cindex Rounding operators
+
+@deftypefn Function {void} {tensor_ceil} @
+{(tensor * t)}
+
+This function rounds upwards to the nearest integer value the elements
+in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_floor} @
+{(tensor * t)}
+
+This function rounds downwards to the nearest integer value the elements
+in @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_round} @
+{(tensor * t)}
+
+These functions round the elements in @code{t} to the nearest integer
+value according to the current rounding mode. The default rounding mode
+is to round to the nearest integer.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_clip} @
+{(tensor * t, const double min, const double max)}
+
+This function clips the value of each element in tensor @code{t}, such
+that the elements value is in the interval @code{[min, max]}.
+
+@end deftypefn
+
+
+@node Logical operators
+@subsection Logical operators
+@cindex Logical operators
+
+@deftypefn Function {void} {tensor_not} @
+{(tensor * t)}
+
+This function performs a negation (logical not) operation on each
+element in tensor @code{t}.
+
+@end deftypefn
+
+@deftypefn Function {tensor_int *} {tensor_fcmp} @
+{(const tensor * t1, const tensor * t2, const double eps)}
+
+This function determines whether elements in tensor @code{t1} are
+approximately equal to a relative accuracy @code{eps} to corresponding
+elements in tensor @code{t2}. It returns an @code{int} tensor with
+values @code{-1} where the element in @code{t1} is less that the one in
+@code{t2}, @code{0} where they are approximately equal, and @code{1}
+where it is greater. It is based on the @code{gsl_fcmp}
+function. @xref{Approximate Comparison of Floating Point Numbers,,,
+gsl-ref, The GSL Manual}.
+
+@end deftypefn
+
+@deftypefn Function {tensor_int *} {tensor_fcmpc} @
+{(const tensor * t, const double x, const double eps)}
+
+This function determines whether elements in tensor @code{t} are
+approximately equal to a relative accuracy @code{eps} to a constant
+value @code{x}. It returns an @code{int} tensor with values @code{-1}
+where the element in @code{t1} is less that the one in @code{t2},
+@code{0} where they are approximately equal, and @code{1} where it is
+greater. It is based on the @code{gsl_fcmp} function. @xref{Approximate
+Comparison of Floating Point Numbers,,, gsl-ref, The GSL Manual}.
+
+@end deftypefn
+
+@deftypefn Function {tensor_int *} {tensor_cmp} @
+{(const tensor * t1, const tensor * t2)}
+
+This function performs a comparison operation between the elements in
+tensors @code{t1} and @code{t2}. It returns an int tensor with element
+values @code{-1} where an element in tensor @code{t1} is less than that
+of @code{t2}, @code{0} where it is equal, and @code{1} where it is
+larger. The input tensors need to have matching sizes.
+
+@end deftypefn
+
+@deftypefn Function {tensor_int *} {tensor_cmpc} @
+{(const tensor * t, const double * x)}
+
+This function performs a comparison operation between the elements in
+tensors @code{t} and a constant value @code{x}. It returns an int tensor
+with element values @code{-1} where an element in tensor @code{t1} is
+less than @code{x}, @code{0} where it is equal, and @code{1} where it is
+larger.
+
+@end deftypefn
+
+@deftypefn Function {tensor_int *} {tensor_and} @
+{(const tensor * t1, const tensor * t2)}
+
+This function performs a logical @code{and} operation between the
+elements in tensors @code{t1} and @code{t2}. It returns an @code{int}
+tensor with element values @code{1} where both elements in @code{t1} and
+@code{t2} evaluate to true, and @code{0} otherwise. The input tensors
+need to have matching sizes.
+
+@end deftypefn
+
+@deftypefn Function {tensor_int *} {tensor_or} @
+{(const tensor * t1, const tensor * t2)}
+
+This function performs a logical @code{or} operation between the
+elements in tensors @code{t1} and @code{t2}. It returns an @code{int}
+tensor with element values @code{1} where at least one element in
+@code{t1} or @code{t2} evaluates to true, and @code{0} otherwise. The
+input tensors need to have matching sizes.
+
+@end deftypefn
+
+@deftypefn Function {tensor_int *} {tensor_xor} @
+{(const tensor * t1, const tensor * t2)}
+
+This function performs a logical @code{xor} operation between the
+elements in tensors @code{t1} and @code{t2}. It returns an @code{int}
+tensor with element values @code{1} where at most one of the elements,
+either in @code{t1} or @code{t2}, evaluates to true, and @code{0}
+otherwise. The input tensors need to have matching sizes.
+
+@end deftypefn
+
+@node Sorting operators
+@subsection Sorting operators
+@cindex Sorting operators
+
+These functions sort tensor data, either directly or indirectly by using
+an index. All the functions rely on the heapsort algorithm as
+implemented in GSL.
+
+@deftypefn Function {void} {tensor_sort} @
+{(tensor * t)}
+
+This function sorts the elements of tensor @code{t} inplace into
+ascending order.
+
+@end deftypefn
+
+@deftypefn Function {void} {tensor_sort_index} @
+{(size_t * p, const tensor * t)}
+
+This function indirectly sorts the elements of tensor @code{t} into
+ascending order. The resulting permutation is stored in array @code{p},
+which should be of size equal to the total number of elements in
+@code{t}. The elements of @code{p} give the index of the tensor element
+which would have been stored in that position if the tensor had been
+sorted in place. The first element of @code{p} gives the index of the
+smallest element in @code{t}, and the last element of @code{p} gives the
+index of the greatest element in @code{t}. The tensor itself is not
+changed.
+
+@end deftypefn
+
+@node Tensor properties
+@section Tensor properties
+@cindex properties
+
+These functions below are defined for both real and complex tensors. For
+complex tensors, both the real and the imaginary part must satisfy the
+conditions for @code{is_null, is_pos, is_neg, is_nonneg, is_nonpos}
+functions.
+
+@deftypefn Function {int} {tensor_match_size} @
+{(const tensor * t1, const tensor * t2)}
+
+This functions compares the dimensions and sizes of tensors @code{t1}
+and @code{t2}. It returns @code{1} if the dimensions and the sizes
+match, otherwise, it signals an error @code{GSL_EBADLEN} and returns
+@code{0}.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_match_tsize} @
+{(const tensor * t1, const tensor * t2)}
+
+This functions compares the total number of elements of tensors
+@code{t1} and @code{t2}. It returns @code{1} if they are equal,
+otherwise, it signals an error @code{GSL_EBADLEN} and returns @code{0}.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_is_null} @
+{(const tensor * t)}
+@end deftypefn
+
+@deftypefn Function {int} {tensor_is_pos} @
+{(const tensor * t)}
+@end deftypefn
+
+@deftypefn Function {int} {tensor_is_neg} @
+{(const tensor * t)}
+@end deftypefn
+
+@deftypefn Function {int} {tensor_is_nonneg} @
+{(const tensor * t)}
+@end deftypefn
+
+@deftypefn Function {int} {tensor_is_nonpos} @
+{(const tensor * t)}
+
+These functions return @code{1} if all of the elements of tensor
+@code{t} are null, positive, negative, non-negative, non-positive
+respectively, and @code{0} otherwise.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_equal} @
+{(const tensor * t1, const tensor * t2)}
+
+This function returns @code{1} if each of the elements of tensor
+@code{t1} is equal to the corresponding element of tensor @code{t2}, and
+@code{0} otherwise.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_is_same} @
+{(const tensor * t)}
+
+This function returns @code{1} if tensor @code{t} has same (identical)
+values for each element, and @code{0} otherwise.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_is_const} @
+{(const tensor * t, const double c)}
+
+This function returns @code{1} if tensor @code{t} has all elements equal
+to a constant @code{c}, and @code{0} otherwise.
+
+@end deftypefn
+
+@deftypefn Function {size_t} {tensor_tsize} @
+{(const tensor * t)}
+
+This function return the total number of elements in tensor @code{t}. An
+inline version of this function is used when @code{HAVE_INLINE} is
+defined.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_is_view} @
+{(const tensor * t)}
+
+This function returns @code{1} if tensor @code{t} is a view, and
+@code{0} otherwise. An inline version of this function is used when
+@code{HAVE_INLINE} is defined.
+
+@end deftypefn
+
+@deftypefn Function {int} {tensor_is_contiguous} @
+{(const tensor * t)}
+
+This function returns @code{1} if tensor @code{t}'s memory is
+contiguous, and @code{0} otherwise. An inline version of this function
+is used when @code{HAVE_INLINE} is defined.
+
+@end deftypefn
+                            
+@node Examples
+@section Examples
+
+The following code examples show basic use of Tensor
+@value{VERSION}. Allocation, initialisation and reading from a tensor
+can be done with the functions @ref{function_tensor_alloc,
+tensor_alloc()}, @ref{function_tensor_set, tensor_set()},
+@ref{function_tensor_get, tensor_get()}, as in the program below:
+
+@verbatiminclude examples/tensor_alloc.c
+
+The element values of the tensor are printed in the output of the
+program. The outer loop attempts to access outside of the range of the
+tensor @code{t}, which produces an error caught by the range-checking
+code.
+
+@verbatiminclude examples/tensor_alloc.txt
+
+@verbatim
+gsl: ../../tensor/prop_source.c:40: ERROR: index 2 out of range for
+tensor dim 0 of size 2
+Default GSL error handler invoked.
+Aborted (core dumped)
+@end verbatim
+
+The next example demonstrates writing/reading a tensor to/from a file.
+
+@verbatiminclude examples/tensor_io.c
+
+After running the program, a binary @code{test.dat} file should contain
+the elements of tensor @code{t}. The tensor @code{u} that is read back
+in from the file should be identical to @code{t}.
+
+The following program shows the use of tensor views to set the elements
+of a tensor of @code{dim 3} to @code{0} at places where both the row and
+column index are even.
+
+@verbatiminclude examples/tensor_views.c
+
+@node Concept index
+@unnumbered Concept index
+
+@printindex cp
+
+@bye
